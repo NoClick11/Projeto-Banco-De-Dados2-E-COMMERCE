@@ -8,7 +8,7 @@ import br.edu.bd2.loja.dao.JPAUtil;
 public class Main {
 
     public static void main(String[] args) throws Exception {
-        String comando = args.length > 0 ? args[0] : "api";
+        String comando = args.length > 0 ? args[0] : "console";
         switch (comando) {
             case "console":
                 new ConsoleApp().executar();
@@ -31,6 +31,7 @@ public class Main {
                 JPAUtil.gerarDDL(destino);
                 System.out.println("DDL gerado em " + destino);
                 JPAUtil.fechar();
+                System.exit(0);
                 break;
             default:
                 System.out.println("Comando desconhecido: " + comando + ". Use console, api, carga ou ddl.");

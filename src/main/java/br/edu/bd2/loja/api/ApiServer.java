@@ -2,7 +2,6 @@ package br.edu.bd2.loja.api;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.io.OutputStream;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -25,37 +24,39 @@ public final class ApiServer {
 
     private ApiServer() { }
 
-    public static void iniciar(int porta) throws Exception {
-        URL webjar = ApiServer.class.getClassLoader().getResource(SWAGGER_UI_WEBJAR);
-        if (webjar == null) {
-            throw new IllegalStateException("Swagger UI nao encontrado no classpath");
-        }
+    private static String tipo(String nome) {
+        if (nome.endsWith(".css")) return "text/css";
+        if (nome.endsWith(".js")) return "application/javascript";
+        if (nome.endsWith(".png")) return "image/png";
+        if (nome.endsWith(".html")) return "text/html";
+        return "application/octet-stream";
+    }
 
+    public static void iniciar(int porta) throws Exception {
         ServletContextHandler ctx = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
         ctx.setContextPath("/");
 
         ctx.addServlet(new ServletHolder(new ServletContainer(new ApiConfig())), "/api/*");
 
-        ctx.addServlet(new ServletHolder("swagger-ui-arquivos", new HttpServlet() {
+        ctx.addServlet(new ServletHolder(new HttpServlet() {
             @Override
             protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-                String arquivo = req.getPathInfo();
-                if (arquivo == null || arquivo.length() < 2 || arquivo.contains("..") || arquivo.endsWith("/")) {
+                String nome = req.getPathInfo() == null ? "" : req.getPathInfo().substring(1);
+                if (!nome.matches("[A-Za-z0-9._-]+")) {
                     resp.sendError(HttpServletResponse.SC_NOT_FOUND);
                     return;
                 }
-                try (InputStream in = ApiServer.class.getClassLoader()
-                        .getResourceAsStream(SWAGGER_UI_WEBJAR + arquivo.substring(1))) {
+                try (InputStream in = ApiServer.class.getClassLoader().getResourceAsStream(SWAGGER_UI_WEBJAR + nome)) {
                     if (in == null) {
                         resp.sendError(HttpServletResponse.SC_NOT_FOUND);
                         return;
                     }
-                    String mime = getServletContext().getMimeType(arquivo);
-                    resp.setContentType(mime != null ? mime : "application/octet-stream");
+                    resp.setContentType(tipo(nome));
                     OutputStream out = resp.getOutputStream();
-                    byte[] buf = new byte[8192];
-                    for (int n; (n = in.read(buf)) > 0; ) {
-                        out.write(buf, 0, n);
+                    byte[] buffer = new byte[8192];
+                    int lidos;
+                    while ((lidos = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, lidos);
                     }
                 }
             }

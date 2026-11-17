@@ -37,7 +37,8 @@ public class ConsultaCriteriaDAO extends GenericDAO<Object, Long> {
             CriteriaBuilder cb = em.getCriteriaBuilder();
             CriteriaQuery<Pedido> cq = cb.createQuery(Pedido.class);
             Root<Pedido> pedido = cq.from(Pedido.class);
-            Join<Object, Object> cliente = pedido.join("cliente");
+            @SuppressWarnings("unchecked")
+            Join<Object, Object> cliente = (Join<Object, Object>) pedido.fetch("cliente");
             pedido.fetch("loja");
 
             List<Predicate> filtros = new ArrayList<>();
