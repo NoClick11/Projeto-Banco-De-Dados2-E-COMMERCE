@@ -1,12 +1,12 @@
 package br.edu.bd2.loja.api;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.net.URL;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.servlet.ServletContainer;
@@ -24,43 +24,21 @@ public final class ApiServer {
 
     private ApiServer() { }
 
-    private static String tipo(String nome) {
-        if (nome.endsWith(".css")) return "text/css";
-        if (nome.endsWith(".js")) return "application/javascript";
-        if (nome.endsWith(".png")) return "image/png";
-        if (nome.endsWith(".html")) return "text/html";
-        return "application/octet-stream";
-    }
-
     public static void iniciar(int porta) throws Exception {
+        URL webjar = ApiServer.class.getClassLoader().getResource(SWAGGER_UI_WEBJAR);
+        if (webjar == null) {
+            throw new IllegalStateException("Swagger UI nao encontrado no classpath");
+        }
+
         ServletContextHandler ctx = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
         ctx.setContextPath("/");
 
         ctx.addServlet(new ServletHolder(new ServletContainer(new ApiConfig())), "/api/*");
 
-        ctx.addServlet(new ServletHolder(new HttpServlet() {
-            @Override
-            protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-                String nome = req.getPathInfo() == null ? "" : req.getPathInfo().substring(1);
-                if (!nome.matches("[A-Za-z0-9._-]+")) {
-                    resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-                    return;
-                }
-                try (InputStream in = ApiServer.class.getClassLoader().getResourceAsStream(SWAGGER_UI_WEBJAR + nome)) {
-                    if (in == null) {
-                        resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-                        return;
-                    }
-                    resp.setContentType(tipo(nome));
-                    OutputStream out = resp.getOutputStream();
-                    byte[] buffer = new byte[8192];
-                    int lidos;
-                    while ((lidos = in.read(buffer)) != -1) {
-                        out.write(buffer, 0, lidos);
-                    }
-                }
-            }
-        }), "/swagger-ui/*");
+        ServletHolder arquivosUi = new ServletHolder("swagger-ui-arquivos", DefaultServlet.class);
+        arquivosUi.setInitParameter("resourceBase", webjar.toExternalForm());
+        arquivosUi.setInitParameter("dirAllowed", "false");
+        ctx.addServlet(arquivosUi, "/swagger-ui/*");
 
         ctx.addServlet(new ServletHolder(new HttpServlet() {
             @Override

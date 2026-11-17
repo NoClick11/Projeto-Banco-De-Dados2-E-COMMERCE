@@ -31,7 +31,6 @@ public class Main {
                 JPAUtil.gerarDDL(destino);
                 System.out.println("DDL gerado em " + destino);
                 JPAUtil.fechar();
-                System.exit(0);
                 break;
             default:
                 System.out.println("Comando desconhecido: " + comando + ". Use console, api, carga ou ddl.");
