@@ -1,0 +1,3 @@
+{
+  "ignoredRoutes": ["/application.wadl", "/application.wadl/{path}"]
+}

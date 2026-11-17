@@ -1,12 +1,13 @@
 package br.edu.bd2.loja.api;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
+import java.io.OutputStream;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.servlet.ServletContainer;
@@ -35,10 +36,30 @@ public final class ApiServer {
 
         ctx.addServlet(new ServletHolder(new ServletContainer(new ApiConfig())), "/api/*");
 
-        ServletHolder arquivosUi = new ServletHolder("swagger-ui-arquivos", DefaultServlet.class);
-        arquivosUi.setInitParameter("resourceBase", webjar.toExternalForm());
-        arquivosUi.setInitParameter("dirAllowed", "false");
-        ctx.addServlet(arquivosUi, "/swagger-ui/*");
+        ctx.addServlet(new ServletHolder("swagger-ui-arquivos", new HttpServlet() {
+            @Override
+            protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+                String arquivo = req.getPathInfo();
+                if (arquivo == null || arquivo.length() < 2 || arquivo.contains("..") || arquivo.endsWith("/")) {
+                    resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+                    return;
+                }
+                try (InputStream in = ApiServer.class.getClassLoader()
+                        .getResourceAsStream(SWAGGER_UI_WEBJAR + arquivo.substring(1))) {
+                    if (in == null) {
+                        resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+                        return;
+                    }
+                    String mime = getServletContext().getMimeType(arquivo);
+                    resp.setContentType(mime != null ? mime : "application/octet-stream");
+                    OutputStream out = resp.getOutputStream();
+                    byte[] buf = new byte[8192];
+                    for (int n; (n = in.read(buf)) > 0; ) {
+                        out.write(buf, 0, n);
+                    }
+                }
+            }
+        }), "/swagger-ui/*");
 
         ctx.addServlet(new ServletHolder(new HttpServlet() {
             @Override
